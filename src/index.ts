@@ -24,6 +24,7 @@ import { READ_APEX_TRIGGER, handleReadApexTrigger, ReadApexTriggerArgs } from ".
 import { WRITE_APEX_TRIGGER, handleWriteApexTrigger, WriteApexTriggerArgs } from "./tools/writeApexTrigger.js";
 import { EXECUTE_ANONYMOUS, handleExecuteAnonymous, ExecuteAnonymousArgs } from "./tools/executeAnonymous.js";
 import { MANAGE_DEBUG_LOGS, handleManageDebugLogs, ManageDebugLogsArgs } from "./tools/manageDebugLogs.js";
+import { MANAGE_REPORTS, handleManageReports, ManageReportsArgs } from "./tools/reports.js";
 
 // Load environment variables (using dotenv 16.x which has no stdout tips)
 // MCP servers require stdout to contain ONLY JSON-RPC messages
@@ -58,7 +59,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     READ_APEX_TRIGGER,
     WRITE_APEX_TRIGGER,
     EXECUTE_ANONYMOUS,
-    MANAGE_DEBUG_LOGS
+    MANAGE_DEBUG_LOGS,
+    MANAGE_REPORTS
   ],
 }));
 
@@ -305,7 +307,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!debugLogsArgs.operation || !debugLogsArgs.username) {
           throw new Error('operation and username are required for managing debug logs');
         }
-        
+
         // Type check and conversion
         const validatedArgs: ManageDebugLogsArgs = {
           operation: debugLogsArgs.operation as 'enable' | 'disable' | 'retrieve',
@@ -318,6 +320,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         return await handleManageDebugLogs(conn, validatedArgs);
+      }
+
+      case "salesforce_manage_reports": {
+        const reportArgs = args as Record<string, unknown>;
+        if (!reportArgs.operation) {
+          throw new Error('operation is required for managing reports');
+        }
+
+        // Type check and conversion
+        const validatedArgs: ManageReportsArgs = {
+          operation: reportArgs.operation as 'list' | 'describe' | 'execute' | 'executeAsync' | 'getInstances' | 'getInstanceResults',
+          reportId: reportArgs.reportId as string | undefined,
+          instanceId: reportArgs.instanceId as string | undefined,
+          includeDetails: reportArgs.includeDetails as boolean | undefined,
+          filters: reportArgs.filters as ManageReportsArgs['filters'],
+          queryFilter: reportArgs.queryFilter as string | undefined,
+          limit: reportArgs.limit as number | undefined
+        };
+
+        return await handleManageReports(conn, validatedArgs);
       }
 
       default:
