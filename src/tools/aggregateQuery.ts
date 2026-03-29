@@ -234,17 +234,40 @@ export async function handleAggregateQuery(conn: any, args: AggregateQueryArgs) 
         const fieldParts = field.trim().split(/\s+/);
         const displayName = fieldParts.length > 1 ? fieldParts[fieldParts.length - 1] : baseField;
         
-        // Handle nested fields in results
+        // Handle nested fields in results (e.g., Owner.Name in GROUP BY)
+        // Salesforce aggregate results may not return relationship fields as nested
+        // objects — try multiple lookup strategies before giving up.
         if (baseField.includes('.')) {
+          // Strategy 1: Nested object walk (works when jsforce returns { Owner: { Name: "..." } })
           const parts = baseField.split('.');
-          let value = record;
+          let value: any = record;
           for (const part of parts) {
             value = value?.[part];
           }
+
+          // Strategy 2: Flattened key (works when jsforce returns { "Owner.Name": "..." })
+          if (value === null || value === undefined) {
+            value = record[baseField];
+          }
+
+          // Strategy 3: Alias/display name key (works when result uses the alias)
+          if (value === null || value === undefined) {
+            value = record[displayName];
+          }
+
+          // Strategy 4: Salesforce expr aliases (aggregate results sometimes use expr0, expr1, ...)
+          // exprN is positional across ALL select fields, not just non-aggregate ones
+          if (value === null || value === undefined) {
+            const exprIdx = selectFields.findIndex(f => extractBaseField(f) === baseField);
+            if (exprIdx >= 0) {
+              value = record[`expr${exprIdx}`];
+            }
+          }
+
           return `    ${displayName}: ${value !== null && value !== undefined ? value : 'null'}`;
         }
-        
-        const value = record[baseField] || record[displayName];
+
+        const value = record[baseField] ?? record[displayName];
         return `    ${displayName}: ${value !== null && value !== undefined ? value : 'null'}`;
       }).join('\n');
       return `Group ${index + 1}:\n${recordStr}`;
