@@ -1,5 +1,4 @@
 import { Tool } from "@modelcontextprotocol/sdk/types.js";
-import type { Connection } from "jsforce";
 
 export const EXECUTE_ANONYMOUS: Tool = {
   name: "salesforce_execute_anonymous",
@@ -65,18 +64,15 @@ export async function handleExecuteAnonymous(conn: any, args: ExecuteAnonymousAr
     if (!args.apexCode || args.apexCode.trim() === '') {
       throw new Error('apexCode is required and cannot be empty');
     }
-    
+
     console.error(`Executing anonymous Apex code`);
-    
-    // Set default log level if not provided
-    const logLevel = args.logLevel || 'DEBUG';
-    
+
     // Execute the anonymous Apex code
     const result = await conn.tooling.executeAnonymous(args.apexCode);
-    
+
     // Format the response
     let responseText = '';
-    
+
     // Add compilation and execution status
     if (result.compiled) {
       responseText += `**Compilation:** Success\n`;
@@ -86,7 +82,7 @@ export async function handleExecuteAnonymous(conn: any, args: ExecuteAnonymousAr
       responseText += `**Column:** ${result.column}\n`;
       responseText += `**Error:** ${result.compileProblem}\n\n`;
     }
-    
+
     if (result.compiled && result.success) {
       responseText += `**Execution:** Success\n`;
     } else if (result.compiled) {
@@ -96,48 +92,48 @@ export async function handleExecuteAnonymous(conn: any, args: ExecuteAnonymousAr
         responseText += `**Stack Trace:**\n\`\`\`\n${result.exceptionStackTrace}\n\`\`\`\n\n`;
       }
     }
-    
+
     // Get debug logs if available
     if (result.compiled) {
       try {
         // Query for the most recent debug log
         const logs = await conn.query(`
           SELECT Id, LogUserId, Operation, Application, Status, LogLength, LastModifiedDate, Request
-          FROM ApexLog 
-          ORDER BY LastModifiedDate DESC 
+          FROM ApexLog
+          ORDER BY LastModifiedDate DESC
           LIMIT 1
         `);
-        
+
         if (logs.records.length > 0) {
           const logId = logs.records[0].Id;
-          
+
           // Retrieve the log body
           const logBody = await conn.tooling.request({
             method: 'GET',
             url: `${conn.instanceUrl}/services/data/v58.0/tooling/sobjects/ApexLog/${logId}/Body`
           });
-          
+
           responseText += `\n**Debug Log:**\n\`\`\`\n${logBody}\n\`\`\``;
         } else {
-          responseText += `\n**Debug Log:** No logs available. Ensure debug logs are enabled for your user.`;
+          responseText += `\n**Debug Log:** No logs captured. To enable debug logging, use the \`salesforce_manage_debug_logs\` tool to create a trace flag for your user first, then re-run this code.`;
         }
       } catch (logError) {
         responseText += `\n**Debug Log:** Unable to retrieve debug logs: ${logError instanceof Error ? logError.message : String(logError)}`;
       }
     }
-    
+
     return {
-      content: [{ 
-        type: "text", 
+      content: [{
+        type: "text",
         text: responseText
       }]
     };
   } catch (error) {
     console.error('Error executing anonymous Apex:', error);
     return {
-      content: [{ 
-        type: "text", 
-        text: `Error executing anonymous Apex: ${error instanceof Error ? error.message : String(error)}` 
+      content: [{
+        type: "text",
+        text: `Error executing anonymous Apex: ${error instanceof Error ? error.message : String(error)}`
       }],
       isError: true,
     };
