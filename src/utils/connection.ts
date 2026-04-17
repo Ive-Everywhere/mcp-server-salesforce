@@ -84,6 +84,22 @@ export async function createSalesforceConnection(config?: ConnectionConfig) {
     'https://login.salesforce.com';
   
   try {
+    // Check for pre-provided access token FIRST (from external OAuth like Eluu)
+    const directAccessToken = process.env.SALESFORCE_ACCESS_TOKEN;
+    const directInstanceUrl = process.env.SALESFORCE_INSTANCE_URL;
+
+    if (directAccessToken && directInstanceUrl) {
+      // Use provided token directly - skip all other auth methods
+      console.error('Connecting to Salesforce using pre-provided Access Token');
+
+      const conn = new jsforce.Connection({
+        instanceUrl: directInstanceUrl,
+        accessToken: directAccessToken,
+      });
+
+      return conn;
+    }
+
     if (connectionType === ConnectionType.OAuth_2_0_Client_Credentials) {
       // OAuth 2.0 Client Credentials Flow
       const clientId = process.env.SALESFORCE_CLIENT_ID;
