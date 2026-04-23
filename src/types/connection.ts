@@ -18,7 +18,14 @@ export enum ConnectionType {
    * Salesforce CLI authentication using sf org display command
    * Requires Salesforce CLI to be installed and an authenticated org
    */
-  Salesforce_CLI = 'Salesforce_CLI'
+  Salesforce_CLI = 'Salesforce_CLI',
+
+  /**
+   * Pre-provided access token from an external OAuth provider (e.g., Eluu platform)
+   * Requires SALESFORCE_ACCESS_TOKEN and SALESFORCE_INSTANCE_URL
+   * The external provider is responsible for token refresh
+   */
+  Access_Token = 'Access_Token'
 }
 
 /**
