@@ -360,7 +360,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function runServer() {
-  const transport = new StdioServerTransport();
+  // Requests arrive over stdio from the process that started this server, and a message of any
+  // size is answered; the SDK's default caps one message at 10 MiB.
+  const transport = new StdioServerTransport(process.stdin, process.stdout, {
+    maxBufferSize: Number.POSITIVE_INFINITY,
+  });
   await server.connect(transport);
   console.error("Salesforce MCP Server running on stdio");
 }
